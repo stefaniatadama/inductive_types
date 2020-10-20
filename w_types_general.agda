@@ -455,39 +455,39 @@ findCon S (x ∷ xs) (inj₂ y) = proj₁ rest , tl (proj₂ rest)
 
 module _(S : Sig) (A : Alg S) where
 
-  -- {-# TERMINATING #-} -- to be removed
   funcsW : (srt : Fin (sorts S)) → WI (Fin (sorts S)) (makeS S) (makeP S) srt → carriers A srt
 
   mapConW : (lst : List U) (fin : Fin (sorts S)) (s : ⊤) →
-            (recArg lst → WI (Fin (sorts S)) (makeS S) (makeP S) fin)
+            (recArg lst → carriers A fin)
             → conTypeAux (carriers A) lst fin
-  mapConW [] fin s p = funcsW fin (p s)
+  mapConW [] fin s p = p s
   mapConW (x ∷ xs) fin s p = λ el_x → mapConW xs fin s (λ ra → p (el_x , ra))
 
   argTypeWToCarr : (x : Arg (sorts S)) → argToSetNrec S x →
                    ((j : Fin (sorts S)) → argToSetRec S x j →
-                   WI (Fin (sorts S)) (makeS S) (makeP S) j) → argType (carriers A) x
+                   carriers A j) → argType (carriers A) x
   argTypeWToCarr (nrec x) s p = s
-  argTypeWToCarr (rec lst fin) s p = mapConW lst fin s (p fin) 
+  argTypeWToCarr (rec lst fin) s p = mapConW lst fin s (p fin)
 
   -- Extracts non-recursive and recursive arguments from WI-type and transforms them
   -- into arguments for algebra A
   argsWToCarr : (srt : Fin (sorts S)) (c : Con (sorts S)) (s : conToSetNrec S c) →
-                ((j : Fin (sorts S)) → conToSetRec S c j → WI (Fin (sorts S)) (makeS S) (makeP S) j)
+                ((j : Fin (sorts S)) → conToSetRec S c j → carriers A j)
                 → args srt (carriers A) c
   argsWToCarr srt (cn []) s p = s
   argsWToCarr srt (cn (x ∷ xs)) (fst , snd) p =
-    argTypeWToCarr x fst (λ j ar → p j (inj₁ ar)) ,
-    argsWToCarr srt (cn xs) snd (λ j cr → p j (inj₂ cr)) 
+    argTypeWToCarr x fst (λ j ar → p j ( (inj₁ ar) )) ,
+    argsWToCarr srt (cn xs) snd (λ j cr → p j ( (inj₂ cr) ))
 
   -- Passing the list of constructors as an argument
   makeArgs : (srt : Fin (sorts S)) (l : List (Con (sorts S)))
-             (s : listConToSetNrec S l) → ((j : Fin (sorts S)) → listConToSetRec S l s j →
-             WI (Fin (sorts S)) (makeS S) (makeP S) j) → args srt (carriers A) (proj₁ (findCon S l s))
+             (s : listConToSetNrec S l)
+             → ((j : Fin (sorts S)) → listConToSetRec S l s j → carriers A j)
+             → args srt (carriers A) (proj₁ (findCon S l s))
   makeArgs srt (x ∷ xs) (inj₁ y) p = argsWToCarr srt x y p
   makeArgs srt (x ∷ xs) (inj₂ y) p = makeArgs srt xs y p
- 
-  funcsW srt (sup .srt s p) = apply S A srt c (cons A srt c pf) (makeArgs srt (cns S srt) s p)
+
+  funcsW srt (sup .srt s p) = apply S A srt c (cons A srt c pf) (makeArgs srt (cns S srt) s λ j x → funcsW j (p j x))
     where
       c,pf = findCon S (cns S srt) s
       c = proj₁ c,pf
